@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap">
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #0d1117;
+            color: #fff;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+        }
+        h1 {
+            color: #0ABAB5;
+            margin-top: 30px;
+        }
+        .container {
+            width: 90%;
+            margin: auto;
+        }
+        .crypto-card {
+            display: inline-block;
+            width: 350px;
+            background: #161b22;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px;
+            box-shadow: 0px 0px 10px rgba(0, 255, 255, 0.5);
+        }
+        canvas {
+            width: 320px !important;
+            height: 180px !important;
+            background-color: #222;
+        }
+        .input-container {
+            margin-top: 10px;
+            background-color: #000;
+            padding: 10px;
+            border-radius: 5px;
+            display: inline-block;
+        }
+        input {
+            padding: 8px;
+            width: 150px;
+            font-size: 14px;
+            margin-right: 10px;
+            text-align: center;
+            background-color: #333;
+            color: blue;
+            border: none;
+            border-radius: 5px;
+        }
+        button {
+            padding: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            background-color: #0ABAB5;
+            border: none;
+            color: white;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #078d8f;
+        }
+        .result {
+            margin-top: 10px;
+            font-weight: bold;
+            color: #0ABAB5;
+        }
+    </style>
+</head>
+<body>
+    <h1>Suivi des Cryptomonnaies en Temps Réel</h1>
+    <div class="container" id="crypto-container"></div>
+
+    <script>
+        const cryptoList = ['bitcoin', 'pi-network', 'cardano', 'polkadot'];
+        const cryptoNames = {
+            'bitcoin': 'Bitcoin (BTC)',
+            'pi-network': 'Pi Network (OKX)',
+            'cardano': 'Cardano (ADA)',
+            'polkadot': 'Polkadot (DOT)'
+        };
+        let cryptoPrices = {};
+
+        const fetchCryptoPrices = async () => {
+            const url = `https://api.coingecko.com/api/v3/simple/price?ids=${cryptoList.join(',')}&vs_currencies=eur`;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                cryptoPrices = data;
+                const container = document.getElementById('crypto-container');
+                container.innerHTML = '';
+
+                for (let crypto of cryptoList) {
+                    if (data[crypto]) {
+                        const price = data[crypto]?.eur || 'N/A';
+                        const card = document.createElement('div');
+                        card.className = 'crypto-card';
+                        card.innerHTML = `
+                            <h2>${cryptoNames[crypto]}</h2>
+                            <p>Prix: €${price}</p>
+                            <canvas id="chart-${crypto}"></canvas>
+                            <div class="input-container">
+                                <input type="number" id="amount-${crypto}" placeholder="Quantité">
+                                <button onclick="calculateValue('${crypto}')">Calculer</button>
+                                <p id="result-${crypto}" class="result"></p>
+                            </div>
+                        `;
+                        container.appendChild(card);
+                        createChart(`chart-${crypto}`, crypto);
+                    }
+                }
+            } catch (error) {
+                console.error("Erreur lors de la récupération des prix :", error);
+            }
+        };
+
+        const createChart = async (canvasId, crypto) => {
+            const ctx = document.getElementById(canvasId).getContext('2d');
+            const url = `https://api.coingecko.com/api/v3/coins/${crypto}/market_chart?vs_currency=eur&days=1`;
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (!data || !data.prices || data.prices.length === 0) {
+                    console.error(`Aucune donnée pour ${crypto}`);
+                    return;
+                }
+
+                const prices = data.prices.slice(-60).map(entry => entry[1]);
+                const labels = data.prices.slice(-60).map(entry => {
+                    const date = new Date(entry[0]);
+                    return date.getHours() + ':' + (date.getMinutes() < 10 ? '0' + date.getMinutes() : date.getMinutes());
+                });
+
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Prix (€)',
+                            data: prices,
+                            borderColor: '#0ABAB5',
+                            borderWidth: 2,
+                            fill: false,
+                            pointRadius: 0,
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            x: {
+                                display: true,
+                                ticks: {
+                                    autoSkip: true,
+                                    maxTicksLimit: 10
+                                }
+                            },
+                            y: { display: true }
+                        },
+                        elements: {
+                            line: {
+                                tension: 0.2
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error(`Erreur lors de la récupération des données pour ${crypto}:`, error);
+            }
+        };
+
+        const calculateValue = (crypto) => {
+            const amount = document.getElementById(`amount-${crypto}`).value;
+            if (!amount || isNaN(amount)) {
+                document.getElementById(`result-${crypto}`).innerText = "Entrez une quantité valide";
+                return;
+            }
+            if (cryptoPrices[crypto]) {
+                const value = amount * cryptoPrices[crypto].eur;
+                document.getElementById(`result-${crypto}`).innerText = `Valeur: €${value.toFixed(2)}`;
+            }
+        };
+
+        fetchCryptoPrices();
+        setInterval(fetchCryptoPrices, 30000);
+    </script>
+</body>
+</html>
