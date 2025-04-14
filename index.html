@@ -74,9 +74,26 @@
             font-weight: bold;
             color: #0ABAB5;
         }
+        .fullscreen-btn {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 1000;
+            padding: 8px 12px;
+            background-color: #0ABAB5;
+            border: none;
+            color: white;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .fullscreen-btn:hover {
+            background-color: #078d8f;
+        }
     </style>
 </head>
 <body>
+    <button class="fullscreen-btn" onclick="openFullscreen()">🖥️ Plein écran</button>
     <h1>Suivi des Cryptomonnaies en Temps Réel</h1>
     <div class="container" id="crypto-container"></div>
 
@@ -186,6 +203,17 @@
             if (cryptoPrices[crypto]) {
                 const value = amount * cryptoPrices[crypto].eur;
                 document.getElementById(`result-${crypto}`).innerText = `Valeur: €${value.toFixed(2)}`;
+            }
+        };
+
+        const openFullscreen = () => {
+            const elem = document.documentElement;
+            if (elem.requestFullscreen) {
+                elem.requestFullscreen();
+            } else if (elem.webkitRequestFullscreen) { // Safari
+                elem.webkitRequestFullscreen();
+            } else if (elem.msRequestFullscreen) { // IE11
+                elem.msRequestFullscreen();
             }
         };
 
